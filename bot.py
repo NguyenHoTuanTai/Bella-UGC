@@ -1,10 +1,11 @@
-import discord
-from discord import app_commands
-import os
+import nextcord
+from nextcord.ext import commands
+from nextcord import SlashOption
 from flask import Flask
 from threading import Thread
+import os
 
-# ── Flask keep-alive (chạy trước) ──
+# Flask keep-alive
 app = Flask(__name__)
 
 @app.route('/')
@@ -14,23 +15,19 @@ def home():
 def run_flask():
     app.run(host='0.0.0.0', port=8080)
 
-Thread(target=run_flask, daemon=True).start()  # Chạy Flask ở background
+Thread(target=run_flask, daemon=True).start()
 
-# ── Discord Bot ──
+# Bot
 TOKEN = os.environ.get('TOKEN')
 
-intents = discord.Intents.default()
-client = discord.Client(intents=intents)
-tree = app_commands.CommandTree(client)
+bot = commands.Bot()
 
-@tree.command(name="b", description="Bot sẽ nhắn lại nội dung bạn gửi")
-@app_commands.describe(text="Nội dung muốn gửi")
-async def b_command(interaction: discord.Interaction, text: str):
+@bot.slash_command(name="b", description="Bot nhắn lại nội dung bạn gửi")
+async def b_command(interaction: nextcord.Interaction, text: str = SlashOption(description="Nội dung")):
     await interaction.response.send_message(text)
 
-@client.event
+@bot.event
 async def on_ready():
-    await tree.sync()
-    print(f"✅ Bot đang chạy: {client.user}")
+    print(f"✅ Bot đang chạy: {bot.user}")
 
-client.run(TOKEN)  # Chạy bot ở cuối cùng
+bot.run(TOKEN)
