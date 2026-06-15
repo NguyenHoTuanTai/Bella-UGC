@@ -46,19 +46,44 @@ def check_bundle():
         print("❌ Error checking bundle:", e)
         return jsonify({"isBundle": False}), 200
 
+
 @app.route('/purchase', methods=['POST'])
 def purchase():
     data = request.json
-    player_name = data.get("playerName")
-    item_name = data.get("itemName")
-    item_price = data.get("itemPrice")
+
+    player_name = data.get("playerName", "Unknown")
+    item_name = data.get("itemName", "Unknown")
+    item_price = data.get("itemPrice", 0)
     image_url = data.get("imageUrl")
     asset_id = data.get("assetId")
+
+    # Kiểm tra có phải Bundle hay không
+    is_bundle = False
+    try:
+        res = requests.get(
+            f"https://catalog.roblox.com/v1/bundles/{asset_id}/details",
+            timeout=3
+        )
+
+        if res.status_code == 200:
+            bundle_data = res.json()
+            is_bundle = True
+
+            # Lấy tên Bundle thật
+            item_name = bundle_data.get("name", item_name)
+
+    except Exception:
+        pass
+
+    # Thêm tiền tố [Bundle]
+    if is_bundle:
+        item_name = f"[Bundle] {item_name}"
 
     print(f"🛒 {player_name} mua {item_name} ({item_price})")
 
     async def send_purchase_message():
         channel = bot.get_channel(CHANNEL_ID)
+
         if not channel:
             print("❌ Không tìm thấy channel")
             return
@@ -68,17 +93,45 @@ def purchase():
             description=f"**{player_name}** just buy item!",
             color=0x00ff00
         )
-        embed.add_field(name="👤 Player", value=player_name, inline=True)
-        embed.add_field(name="🎁 Item", value=item_name, inline=True)
-        embed.add_field(name="💰 Price", value=f"{item_price} Robux", inline=True)
-        embed.add_field(name="🆔 Asset ID", value=asset_id, inline=False)
+
+        embed.add_field(
+            name="👤 Player",
+            value=player_name,
+            inline=True
+        )
+
+        embed.add_field(
+            name="🎁 Item",
+            value=item_name,
+            inline=True
+        )
+
+        embed.add_field(
+            name="💰 Price",
+            value=f"{item_price} Robux",
+            inline=True
+        )
+
+        embed.add_field(
+            name="🆔 Asset ID",
+            value=str(asset_id),
+            inline=False
+        )
+
         if image_url:
             embed.set_thumbnail(url=image_url)
+
         embed.set_footer(text="Bella UGC Purchase")
+
         await channel.send(embed=embed)
 
     bot.loop.create_task(send_purchase_message())
-    return jsonify({"success": True, "message": "Purchase received"})
+
+    return jsonify({
+        "success": True,
+        "message": "Purchase received"
+    })
+
 
 
 def run_flask():
