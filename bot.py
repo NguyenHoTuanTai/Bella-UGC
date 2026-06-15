@@ -1,4 +1,4 @@
-python
+
 from flask import Flask, request, jsonify
 import nextcord
 from nextcord.ext import commands
