@@ -1,9 +1,23 @@
 import discord
 from discord import app_commands
 import os
+from flask import Flask
+from threading import Thread
 
-TOKEN = os.environ.get('TOKEN')  # Lấy từ biến môi trường
-CLIENT_ID = os.environ.get('CLIENT_ID')
+# ── Flask keep-alive (chạy trước) ──
+app = Flask(__name__)
+
+@app.route('/')
+def home():
+    return "Bot online!"
+
+def run_flask():
+    app.run(host='0.0.0.0', port=8080)
+
+Thread(target=run_flask, daemon=True).start()  # Chạy Flask ở background
+
+# ── Discord Bot ──
+TOKEN = os.environ.get('TOKEN')
 
 intents = discord.Intents.default()
 client = discord.Client(intents=intents)
@@ -17,6 +31,6 @@ async def b_command(interaction: discord.Interaction, text: str):
 @client.event
 async def on_ready():
     await tree.sync()
-    print(f"Bot đang chạy: {client.user}")
+    print(f"✅ Bot đang chạy: {client.user}")
 
-client.run(TOKEN)
+client.run(TOKEN)  # Chạy bot ở cuối cùng
