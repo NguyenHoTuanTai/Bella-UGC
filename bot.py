@@ -87,30 +87,41 @@ def run_flask():
 Thread(target=run_flask, daemon=True).start()
 
 # DISCORD BOT
-intents = nextcord.Intents.default()
-bot = commands.Bot(intents=intents)
+def make_bot():
+    intents = nextcord.Intents.default()
+    b = commands.Bot(intents=intents)
 
-@bot.slash_command(name="b", description="Bot text what u text")
-async def b_command(
-    interaction: nextcord.Interaction,
-    text: str = SlashOption(description="words")
-):
-    await interaction.response.send_message(text)
+    @b.slash_command(name="b", description="Bot text what u text")
+    async def b_command(
+        interaction: nextcord.Interaction,
+        text: str = SlashOption(description="words")
+    ):
+        await interaction.response.send_message(text)
 
-@bot.event
-async def on_ready():
-    print(f"✅ Bot đang chạy: {bot.user}")
+    @b.event
+    async def on_ready():
+        print(f"✅ Bot đang chạy: {b.user}")
 
-# ✅ Retry khi bị rate limit thay vì crash liên tục
+    return b
+
+# ✅ Retry: tạo bot mới mỗi lần thử để tránh event loop bị đóng
 MAX_RETRIES = 5
 for attempt in range(MAX_RETRIES):
     try:
+        # Tạo event loop mới
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+
+        bot = make_bot()
         bot.run(TOKEN)
         break
     except nextcord.errors.HTTPException as e:
         if e.status == 429:
-            wait = 30 * (attempt + 1)
+            wait = 60 * (attempt + 1)  # 60s, 120s, 180s...
             print(f"⚠️ Rate limited! Chờ {wait}s rồi thử lại (lần {attempt + 1}/{MAX_RETRIES})")
             time.sleep(wait)
         else:
             raise
+    except Exception as e:
+        print(f"❌ Lỗi: {e}")
+        time.sleep(30)
