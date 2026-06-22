@@ -6,6 +6,7 @@ from threading import Thread
 import os
 import asyncio
 import requests
+import time
 
 app = Flask(__name__)
 
@@ -76,9 +77,7 @@ def purchase():
         embed.set_footer(text="Bella UGC Purchase")
         await channel.send(embed=embed)
 
-    # ✅ FIX: dùng run_coroutine_threadsafe thay vì bot.loop.create_task
     asyncio.run_coroutine_threadsafe(send_purchase_message(), bot.loop)
-
     return jsonify({"success": True, "message": "Purchase received"})
 
 
@@ -102,4 +101,16 @@ async def b_command(
 async def on_ready():
     print(f"✅ Bot đang chạy: {bot.user}")
 
-bot.run(TOKEN)
+# ✅ Retry khi bị rate limit thay vì crash liên tục
+MAX_RETRIES = 5
+for attempt in range(MAX_RETRIES):
+    try:
+        bot.run(TOKEN)
+        break
+    except nextcord.errors.HTTPException as e:
+        if e.status == 429:
+            wait = 30 * (attempt + 1)
+            print(f"⚠️ Rate limited! Chờ {wait}s rồi thử lại (lần {attempt + 1}/{MAX_RETRIES})")
+            time.sleep(wait)
+        else:
+            raise
